@@ -23,8 +23,14 @@ fn addExample(
 
     const run_step = b.step(name, b.fmt("Run the {s} example", .{name}));
     const run_cmd = b.addRunArtifact(exe);
-    run_step.dependOn(&run_cmd.step);
     run_cmd.step.dependOn(b.getInstallStep());
+
+    // Forward command line arguments to the executable
+    if (b.args) |args| {
+        run_cmd.addArgs(args);
+    }
+
+    run_step.dependOn(&run_cmd.step);
 }
 
 // Although this function looks imperative, it does not perform the build

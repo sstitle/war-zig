@@ -2,6 +2,8 @@ const std = @import("std");
 const Card = @import("../../cards/card.zig").Card;
 const CardQueue = @import("../../cards/structures/card_queue.zig").CardQueue;
 const WarPile = @import("../../cards/structures/war_pile.zig").WarPile;
+const ActionHistory = @import("../../data_structures/action_history.zig").ActionHistory;
+const GameCommand = @import("commands.zig").GameCommand;
 
 pub const Player = enum {
     player1,
@@ -41,10 +43,14 @@ pub const GameState = struct {
     /// Cards currently in play (war pile) - fixed buffer for zero allocations
     war_pile: WarPile,
 
+    /// Command history for undo/redo support (10,000 commands max)
+    history: ActionHistory(GameCommand, 10000),
+
     pub fn init(shuffled_deck: [52]Card) !GameState {
         var p1_hand = CardQueue.init();
         var p2_hand = CardQueue.init();
         const war_pile = WarPile.init();
+        const history = ActionHistory(GameCommand, 10000).init();
 
         // Deal cards: P1 gets first 26, P2 gets last 26
         try p1_hand.pushBackSlice(shuffled_deck[0..26]);
@@ -56,6 +62,7 @@ pub const GameState = struct {
             .phase = .playing,
             .round = 0,
             .war_pile = war_pile,
+            .history = history,
         };
     }
 
