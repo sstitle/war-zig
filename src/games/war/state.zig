@@ -5,6 +5,7 @@ const WarPile = @import("../../cards/structures/war_pile.zig").WarPile;
 const ActionHistory = @import("../../data_structures/action_history.zig").ActionHistory;
 const GameCommand = @import("commands.zig").GameCommand;
 const Config = @import("config.zig").Config;
+const GameError = @import("errors.zig").GameError;
 
 pub const Player = enum {
     player1,
@@ -49,7 +50,7 @@ pub const GameState = struct {
     /// Command history for undo/redo support
     history: ActionHistory(GameCommand, Config.max_history),
 
-    pub fn init(shuffled_deck: [Config.deck_size]Card) !GameState {
+    pub fn init(shuffled_deck: [Config.deck_size]Card) GameError!GameState {
         var p1_hand = CardQueue.init();
         var p2_hand = CardQueue.init();
         const war_pile = WarPile.init();
@@ -75,7 +76,7 @@ pub const GameState = struct {
     }
 
     /// Get a player's hand size
-    pub fn handSize(self: *const GameState, player: Player) usize {
+    pub inline fn handSize(self: *const GameState, player: Player) usize {
         return switch (player) {
             .player1 => self.p1_hand.size(),
             .player2 => self.p2_hand.size(),
@@ -96,7 +97,7 @@ pub const GameState = struct {
     }
 
     /// Check if the game is over
-    pub fn isGameOver(self: *const GameState) bool {
+    pub inline fn isGameOver(self: *const GameState) bool {
         return self.p1_hand.isEmpty() or self.p2_hand.isEmpty();
     }
 

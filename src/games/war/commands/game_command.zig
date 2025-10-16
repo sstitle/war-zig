@@ -1,6 +1,7 @@
 const std = @import("std");
 const game_state = @import("../state.zig");
 const GameState = game_state.GameState;
+const GameError = @import("../errors.zig").GameError;
 
 const PlayCardsCommand = @import("play_cards.zig").PlayCardsCommand;
 const ResolveRoundCommand = @import("resolve_round.zig").ResolveRoundCommand;
@@ -37,19 +38,19 @@ pub const GameCommand = union(enum) {
     resolve_round: ResolveRoundCommand,
     war: WarCommand,
 
-    pub fn do(self: *GameCommand, state: *GameState) !void {
+    pub fn do(self: *GameCommand, state: *GameState) GameError!void {
         return switch (self.*) {
             inline else => |*cmd| cmd.do(state),
         };
     }
 
-    pub fn undo(self: *GameCommand, state: *GameState) !void {
+    pub fn undo(self: *GameCommand, state: *GameState) GameError!void {
         return switch (self.*) {
             inline else => |*cmd| cmd.undo(state),
         };
     }
 
-    pub fn redo(self: *GameCommand, state: *GameState) !void {
+    pub fn redo(self: *GameCommand, state: *GameState) GameError!void {
         return switch (self.*) {
             inline else => |*cmd| cmd.redo(state),
         };

@@ -5,6 +5,7 @@ const Player = game_state.Player;
 const GamePhase = game_state.GamePhase;
 const Card = @import("../../../cards/card.zig").Card;
 const WarPile = @import("../../../cards/structures/war_pile.zig").WarPile;
+const GameError = @import("../errors.zig").GameError;
 
 /// ResolveRoundCommand - Compare cards in war pile and award to winner
 pub const ResolveRoundCommand = struct {
@@ -14,9 +15,9 @@ pub const ResolveRoundCommand = struct {
     prev_round: u32 = undefined,
     was_war: bool = false,
 
-    pub fn do(self: *ResolveRoundCommand, state: *GameState) !void {
+    pub fn do(self: *ResolveRoundCommand, state: *GameState) GameError!void {
         if (state.war_pile.len < 2) {
-            return error.InsufficientCardsInWarPile;
+            return GameError.InsufficientCardsInWarPile;
         }
 
         // Capture state for undo
@@ -31,28 +32,29 @@ pub const ResolveRoundCommand = struct {
         const p1_card = pile_items[pile_items.len - 2];
         const p2_card = pile_items[pile_items.len - 1];
 
-        // Determine winner by comparing rank values
-        const p1_value = p1_card.rank.value();
-        const p2_value = p2_card.rank.value();
-
-        if (p1_value > p2_value) {
-            self.winner = .player1;
-            self.was_war = false;
-        } else if (p1_value < p2_value) {
-            self.winner = .player2;
-            self.was_war = false;
-        } else {
-            // War! Cards are equal
-            self.was_war = true;
-            state.phase = .war;
-            state.round += 1;
-            return;
+        // Determine winner by comparing ranks using std.math.Order
+        switch (p1_card.rank.compare(p2_card.rank)) {
+            .gt => {
+                self.winner = .player1;
+                self.was_war = false;
+            },
+            .lt => {
+                self.winner = .player2;
+                self.was_war = false;
+            },
+            .eq => {
+                // War! Cards are equal
+                self.was_war = true;
+                state.phase = .war;
+                state.round += 1;
+                return;
+            },
         }
 
         try self.applyWinner(state);
     }
 
-    pub fn undo(self: *ResolveRoundCommand, state: *GameState) !void {
+    pub fn undo(self: *ResolveRoundCommand, state: *GameState) GameError!void {
         // If this was a war, just restore state
         if (self.was_war) {
             state.phase = self.prev_phase;
@@ -71,7 +73,7 @@ pub const ResolveRoundCommand = struct {
         state.round = self.prev_round;
     }
 
-    pub fn redo(self: *ResolveRoundCommand, state: *GameState) !void {
+    pub fn redo(self: *ResolveRoundCommand, state: *GameState) GameError!void {
         // If this was a war, just update state
         if (self.was_war) {
             state.phase = .war;
@@ -83,7 +85,7 @@ pub const ResolveRoundCommand = struct {
     }
 
     /// Shared logic for awarding cards to winner
-    inline fn applyWinner(self: *const ResolveRoundCommand, state: *GameState) !void {
+    inline fn applyWinner(self: *const ResolveRoundCommand, state: *GameState) GameError!void {
         // Award cards to winner from snapshot (O(n) but unavoidable)
         const winner_hand = state.getHand(self.winner);
         try winner_hand.pushBackSlice(self.war_pile_snapshot.items());

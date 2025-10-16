@@ -22,8 +22,14 @@ pub const Rank = enum(u8) {
     ace = 14,
 
     /// Returns the numeric value of the rank (2-14).
-    pub fn value(self: Rank) u8 {
+    pub inline fn value(self: Rank) u8 {
         return @intFromEnum(self);
+    }
+
+    /// Compares two ranks and returns their ordering.
+    /// Uses std.math.Order for idiomatic Zig comparison.
+    pub inline fn compare(self: Rank, other: Rank) std.math.Order {
+        return std.math.order(@intFromEnum(self), @intFromEnum(other));
     }
 
     /// Returns the string representation of the rank.

@@ -7,7 +7,7 @@
 //! Example:
 //! ```
 //! var buffer = RingBuffer(Card, 52).init();
-//! try buffer.pushBack(Card.init(.hearts, .ace));
+//! try buffer.pushBack(Card{ .suit = .hearts, .rank = .ace });
 //! const card = try buffer.popFront();
 //! ```
 

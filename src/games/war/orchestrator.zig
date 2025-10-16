@@ -10,6 +10,7 @@ const PlayCardsCommand = @import("commands.zig").PlayCardsCommand;
 const ResolveRoundCommand = @import("commands.zig").ResolveRoundCommand;
 const WarCommand = @import("commands.zig").WarCommand;
 const Config = @import("config.zig").Config;
+const GameError = @import("errors.zig").GameError;
 
 // Calculate actual maximum wars per turn based on game rules
 // Each war requires Config.cards_per_war_per_player cards per player
@@ -18,7 +19,7 @@ const max_wars_per_turn = (Config.cards_per_player / Config.cards_per_war_per_pl
 const max_commands_per_turn = max_wars_per_turn * 3; // war + play + resolve per war
 
 /// Execute a single round: play cards and resolve
-pub fn executeRound(state: *GameState) !RoundResult {
+pub fn executeRound(state: *GameState) GameError!RoundResult {
     var result = RoundResult{};
 
     // Play cards
@@ -39,7 +40,7 @@ pub fn executeRound(state: *GameState) !RoundResult {
 }
 
 /// Handle complete war phase until resolved
-pub fn handleWarPhase(state: *GameState) !WarResult {
+pub fn handleWarPhase(state: *GameState) GameError!WarResult {
     var result = WarResult{
         .war_count = 0,
         .commands_count = 0,
@@ -75,7 +76,7 @@ pub fn handleWarPhase(state: *GameState) !WarResult {
 }
 
 /// Execute a complete game turn (round + any wars that occur)
-pub fn executeTurn(state: *GameState) !TurnResult {
+pub fn executeTurn(state: *GameState) GameError!TurnResult {
     var result = TurnResult{
         .round_result = try executeRound(state),
         .war_result = null,

@@ -21,7 +21,7 @@ pub const Deck = struct {
 
         for (suits) |suit| {
             for (ranks) |rank| {
-                deck.cards[index] = card.Card.init(suit, rank);
+                deck.cards[index] = card.Card{ .suit = suit, .rank = rank };
                 index += 1;
             }
         }

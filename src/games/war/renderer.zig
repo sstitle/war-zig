@@ -28,13 +28,13 @@ pub fn printState(state: *const GameState) !void {
 /// Print command execution details
 pub fn printCommandDetails(cmd: *const GameCommand) void {
     switch (cmd.*) {
-        .play_cards => |*play| {
+        .play_cards => |play| {
             std.debug.print("  Play Cards: P1 played {f}, P2 played {f}\n", .{
                 play.p1_card,
                 play.p2_card,
             });
         },
-        .resolve_round => |*resolve| {
+        .resolve_round => |resolve| {
             if (resolve.was_war) {
                 std.debug.print("  Resolve: Cards matched - WAR!\n", .{});
             } else {
@@ -48,7 +48,7 @@ pub fn printCommandDetails(cmd: *const GameCommand) void {
                 });
             }
         },
-        .war => |*war| {
+        .war => |war| {
             std.debug.print("  War: P1 put down {d} cards, P2 put down {d} cards\n", .{
                 war.p1_count,
                 war.p2_count,

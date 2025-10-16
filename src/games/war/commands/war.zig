@@ -4,6 +4,7 @@ const GameState = game_state.GameState;
 const GamePhase = game_state.GamePhase;
 const Card = @import("../../../cards/card.zig").Card;
 const Config = @import("../config.zig").Config;
+const GameError = @import("../errors.zig").GameError;
 
 /// WarCommand - Handle the "war" scenario when cards are equal
 /// Each player puts down cards (traditionally 3 face-down + 1 face-up)
@@ -17,7 +18,7 @@ pub const WarCommand = struct {
     p2_count: usize = 0,
     prev_phase: GamePhase = undefined,
 
-    pub fn do(self: *WarCommand, state: *GameState) !void {
+    pub fn do(self: *WarCommand, state: *GameState) GameError!void {
         self.prev_phase = state.phase;
 
         // Determine how many cards each player can contribute
@@ -38,7 +39,7 @@ pub const WarCommand = struct {
         state.phase = .playing;
     }
 
-    pub fn undo(self: *WarCommand, state: *GameState) !void {
+    pub fn undo(self: *WarCommand, state: *GameState) GameError!void {
         // Remove cards from war pile using bulk operation
         const total_to_pop = self.p1_count + self.p2_count;
         try state.war_pile.popMultiple(total_to_pop);
@@ -59,7 +60,7 @@ pub const WarCommand = struct {
         state.phase = self.prev_phase;
     }
 
-    pub fn redo(self: *WarCommand, state: *GameState) !void {
+    pub fn redo(self: *WarCommand, state: *GameState) GameError!void {
         // Handle early game-over case (player had no cards during initial do())
         if (self.p1_count == 0 or self.p2_count == 0) {
             state.phase = .game_over;
@@ -81,7 +82,7 @@ pub const WarCommand = struct {
     }
 
     /// Capture cards from hands during initial do()
-    inline fn captureAndRemoveCards(self: *WarCommand, state: *GameState) !void {
+    inline fn captureAndRemoveCards(self: *WarCommand, state: *GameState) GameError!void {
         var i: usize = 0;
         while (i < self.p1_count) : (i += 1) {
             self.p1_cards[i] = try state.p1_hand.popFront();
@@ -93,7 +94,7 @@ pub const WarCommand = struct {
     }
 
     /// Shared logic for adding captured cards to war pile
-    inline fn applyToWarPile(self: *const WarCommand, state: *GameState) !void {
+    inline fn applyToWarPile(self: *const WarCommand, state: *GameState) GameError!void {
         try state.war_pile.appendSlice(self.p1_cards[0..self.p1_count]);
         try state.war_pile.appendSlice(self.p2_cards[0..self.p2_count]);
     }
