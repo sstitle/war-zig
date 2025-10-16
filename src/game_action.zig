@@ -3,7 +3,8 @@ const game_state = @import("game_state.zig");
 const GameState = game_state.GameState;
 const Player = game_state.Player;
 const GamePhase = game_state.GamePhase;
-const Card = @import("card.zig").Card;
+const card = @import("card.zig");
+const Card = card.Card;
 
 /// Tagged union of all game commands for efficient dispatch.
 /// Uses compile-time switch dispatch instead of virtual function pointers.
@@ -74,6 +75,11 @@ pub const PlayCardsCommand = struct {
 };
 
 /// ResolveRoundCommand - Compare cards in war pile and award to winner
+///
+/// Note on memory copies: This command copies the war pile for undo/redo support.
+/// While this adds some overhead (~52 cards × 16 bytes = 832 bytes max), it's
+/// necessary for the command pattern. If undo/redo is not needed in your use case,
+/// this snapshot could be eliminated to improve performance.
 pub const ResolveRoundCommand = struct {
     winner: Player = undefined,
     war_pile_snapshot: [52]Card = undefined,
@@ -87,10 +93,11 @@ pub const ResolveRoundCommand = struct {
             return error.InsufficientCardsInWarPile;
         }
 
-        // Capture state
+        // Capture state for undo
         self.prev_phase = state.phase;
         self.prev_round = state.round;
         self.war_pile_len = state.war_pile.len;
+        // Copy war pile to enable undo (tradeoff: memory copy for undo capability)
         @memcpy(self.war_pile_snapshot[0..self.war_pile_len], state.war_pile.items());
 
         // Get the last two cards played (P1's card is second-to-last, P2's is last)
@@ -98,14 +105,14 @@ pub const ResolveRoundCommand = struct {
         const p1_card = pile_items[pile_items.len - 2];
         const p2_card = pile_items[pile_items.len - 1];
 
-        // Determine winner using direct enum comparison for performance
-        const p1_rank = @intFromEnum(p1_card.rank);
-        const p2_rank = @intFromEnum(p2_card.rank);
+        // Determine winner by comparing rank values
+        const p1_value = p1_card.rank.value();
+        const p2_value = p2_card.rank.value();
 
-        if (p1_rank > p2_rank) {
+        if (p1_value > p2_value) {
             self.winner = .player1;
             self.was_war = false;
-        } else if (p2_rank > p1_rank) {
+        } else if (p1_value < p2_value) {
             self.winner = .player2;
             self.was_war = false;
         } else {
@@ -200,13 +207,10 @@ pub const WarCommand = struct {
     }
 
     pub fn undo(self: *WarCommand, state: *GameState) !void {
-        // Remove cards from war pile (in reverse order: p2 cards then p1 cards)
-        var i: usize = 0;
-        while (i < self.p2_count) : (i += 1) {
-            _ = state.war_pile.pop();
-        }
-        i = 0;
-        while (i < self.p1_count) : (i += 1) {
+        // Remove cards from war pile (p1 and p2 cards in one optimized loop)
+        const total_to_pop = self.p1_count + self.p2_count;
+        var i = total_to_pop;
+        while (i > 0) : (i -= 1) {
             _ = state.war_pile.pop();
         }
 
@@ -266,9 +270,9 @@ pub const WarCommand = struct {
 };
 
 test "PlayCardsCommand basic usage" {
-    const deck_module = @import("deck.zig");
-    const deck = deck_module.Deck.init();
-    var state = try GameState.init(std.testing.allocator, deck.cards);
+    const deck_lib = @import("deck.zig");
+    const deck = deck_lib.Deck.init();
+    var state = try GameState.init(deck.cards);
     defer state.deinit();
 
     var cmd = PlayCardsCommand{};

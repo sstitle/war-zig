@@ -1,10 +1,21 @@
+//! Fixed-size circular buffer optimized for card game operations.
+//!
+//! Provides O(1) operations for removing from front and adding to back,
+//! which is perfect for the War card game where cards are drawn from the top
+//! and added to the bottom of a player's deck.
+//!
+//! Example:
+//! ```
+//! var queue = CardQueue.init();
+//! try queue.pushBack(Card.init(.hearts, .ace));
+//! const card = try queue.popFront();
+//! ```
+
 const std = @import("std");
 const Card = @import("card.zig").Card;
 
-/// A fixed-size circular buffer optimized for card game operations.
-/// Provides O(1) operations for removing from front and adding to back,
-/// which is perfect for War game where cards are drawn from the top
-/// and added to the bottom of the deck.
+/// A fixed-size circular buffer for exactly 52 cards.
+/// Uses a ring buffer to enable O(1) operations at both ends.
 pub const CardQueue = struct {
     buffer: [52]Card,
     head: usize,
@@ -68,17 +79,17 @@ pub const CardQueue = struct {
     }
 
     /// Get the number of cards in the queue.
-    pub fn size(self: *const CardQueue) usize {
+    pub inline fn size(self: *const CardQueue) usize {
         return self.count;
     }
 
     /// Check if the queue is empty.
-    pub fn isEmpty(self: *const CardQueue) bool {
+    pub inline fn isEmpty(self: *const CardQueue) bool {
         return self.count == 0;
     }
 
     /// Check if the queue is full.
-    pub fn isFull(self: *const CardQueue) bool {
+    pub inline fn isFull(self: *const CardQueue) bool {
         return self.count >= self.buffer.len;
     }
 

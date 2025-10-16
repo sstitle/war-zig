@@ -1,8 +1,13 @@
+//! Ring buffer-based action history for efficient undo/redo.
+//!
+//! Stores a fixed number of recent actions to support tens of thousands of rounds
+//! without unbounded memory growth. When the buffer is full, the oldest actions
+//! are discarded to make room for new ones.
+
 const std = @import("std");
 
-/// Ring buffer-based action history for efficient undo/redo.
-/// Stores a fixed number of recent actions to support tens of thousands of rounds
-/// without unbounded memory growth.
+/// Generic action history with undo/redo support.
+/// Uses a ring buffer to maintain a fixed-size history without allocations.
 pub fn ActionHistory(comptime T: type, comptime capacity: usize) type {
     return struct {
         const Self = @This();

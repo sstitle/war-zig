@@ -9,10 +9,6 @@ const ResolveRoundCommand = war_zig.ResolveRoundCommand;
 const WarCommand = war_zig.WarCommand;
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-
     // Create and shuffle a deck
     var prng = std.Random.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
@@ -25,7 +21,7 @@ pub fn main() !void {
     deck.shuffle(random);
 
     // Initialize game state
-    var state = try GameState.init(allocator, deck.cards);
+    var state = try GameState.init(deck.cards);
     defer state.deinit();
 
     std.debug.print("=== War Game ===\n", .{});
@@ -33,15 +29,15 @@ pub fn main() !void {
 
     // Play the game
     var round_num: u32 = 0;
-    const max_rounds: u32 = 100000; // Prevent infinite loops
+    const max_rounds: comptime_int = 100_000; // Prevent infinite loops
     var war_count: u32 = 0;
 
     while (!state.isGameOver() and round_num < max_rounds) : (round_num += 1) {
         // Play cards
         var play_cmd = PlayCardsCommand{};
         play_cmd.do(&state) catch |err| {
-            std.debug.print("Error playing cards: {}\n", .{err});
-            break;
+            std.debug.print("Fatal error playing cards: {s}\n", .{@errorName(err)});
+            return err;
         };
 
         // Print the cards played
@@ -55,8 +51,8 @@ pub fn main() !void {
         var resolve_cmd = ResolveRoundCommand{};
 
         resolve_cmd.do(&state) catch |err| {
-            std.debug.print("Error resolving round: {}\n", .{err});
-            break;
+            std.debug.print("Fatal error resolving round: {s}\n", .{@errorName(err)});
+            return err;
         };
 
         // Print the result
@@ -82,7 +78,7 @@ pub fn main() !void {
             var war_cmd = WarCommand{};
 
             war_cmd.do(&state) catch |err| {
-                std.debug.print("Error during war: {}\n", .{err});
+                std.debug.print("Fatal error during war: {s}\n", .{@errorName(err)});
                 state.phase = .game_over;
                 break;
             };
@@ -90,7 +86,8 @@ pub fn main() !void {
             // After war, play and resolve again
             play_cmd = PlayCardsCommand{};
             play_cmd.do(&state) catch |err| {
-                std.debug.print("Error playing cards after war: {}\n", .{err});
+                std.debug.print("Fatal error playing cards after war: {s}\n", .{@errorName(err)});
+                state.phase = .game_over;
                 break;
             };
 
@@ -102,7 +99,8 @@ pub fn main() !void {
             var resolve_cmd2 = ResolveRoundCommand{};
 
             resolve_cmd2.do(&state) catch |err| {
-                std.debug.print("Error resolving after war: {}\n", .{err});
+                std.debug.print("Fatal error resolving after war: {s}\n", .{@errorName(err)});
+                state.phase = .game_over;
                 break;
             };
 

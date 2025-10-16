@@ -1,11 +1,18 @@
+//! Card game primitives: suits, ranks, and card representation.
+//!
+//! This module provides the fundamental types for representing playing cards.
+//! All types are value types with no dynamic allocation.
+
 const std = @import("std");
 
+/// The four standard playing card suits.
 pub const Suit = enum {
     hearts,
     diamonds,
     clubs,
     spades,
 
+    /// Returns the string representation of the suit.
     pub fn toString(self: Suit) []const u8 {
         return switch (self) {
             .hearts => "Hearts",
@@ -16,6 +23,8 @@ pub const Suit = enum {
     }
 };
 
+/// Card ranks from 2 to Ace with their comparative values.
+/// Backed by u8 for efficient comparisons (2=lowest, 14=Ace=highest).
 pub const Rank = enum(u8) {
     two = 2,
     three = 3,
@@ -31,10 +40,12 @@ pub const Rank = enum(u8) {
     king = 13,
     ace = 14,
 
+    /// Returns the numeric value of the rank (2-14).
     pub fn value(self: Rank) u8 {
         return @intFromEnum(self);
     }
 
+    /// Returns the string representation of the rank.
     pub fn toString(self: Rank) []const u8 {
         return switch (self) {
             .two => "2",
@@ -54,10 +65,12 @@ pub const Rank = enum(u8) {
     }
 };
 
+/// A standard playing card with a suit and rank.
 pub const Card = struct {
     suit: Suit,
     rank: Rank,
 
+    /// Creates a new card with the given suit and rank.
     pub fn init(suit: Suit, rank: Rank) Card {
         return Card{
             .suit = suit,
@@ -65,6 +78,7 @@ pub const Card = struct {
         };
     }
 
+    /// Formats the card for printing (e.g., "Ace of Spades").
     pub fn format(self: Card, writer: anytype) !void {
         try writer.print("{s} of {s}", .{ self.rank.toString(), self.suit.toString() });
     }

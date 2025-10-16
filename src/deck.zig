@@ -1,9 +1,14 @@
+//! Standard 52-card deck implementation with shuffling support.
+
 const std = @import("std");
 const card = @import("card.zig");
 
+/// A standard 52-card deck (13 ranks × 4 suits).
 pub const Deck = struct {
     cards: [52]card.Card,
 
+    /// Initializes a deck in standard order: Hearts, Diamonds, Clubs, Spades,
+    /// with ranks from 2 to Ace in each suit.
     pub fn init() Deck {
         var deck: Deck = undefined;
         var index: usize = 0;
@@ -24,6 +29,7 @@ pub const Deck = struct {
         return deck;
     }
 
+    /// Shuffles the deck using the Fisher-Yates algorithm.
     pub fn shuffle(self: *Deck, random: std.Random) void {
         var i: usize = self.cards.len - 1;
         while (i > 0) : (i -= 1) {

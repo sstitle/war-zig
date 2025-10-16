@@ -1,8 +1,8 @@
 const std = @import("std");
-const card_module = @import("card.zig");
-const Card = card_module.Card;
-const Rank = card_module.Rank;
-const Suit = card_module.Suit;
+const card_lib = @import("card.zig");
+const Card = card_lib.Card;
+const Rank = card_lib.Rank;
+const Suit = card_lib.Suit;
 const CardQueue = @import("card_queue.zig").CardQueue;
 
 pub const Player = enum {
@@ -58,6 +58,7 @@ pub const FixedWarPile = struct {
 
 /// War game state using CardQueues for O(1) card operations.
 /// CardQueues provide efficient O(1) removal from front and addition to back.
+/// This struct uses only fixed-size buffers for zero-allocation gameplay.
 pub const GameState = struct {
     /// Player 1's hand (ring buffer for O(1) operations)
     p1_hand: CardQueue,
@@ -74,10 +75,7 @@ pub const GameState = struct {
     /// Cards currently in play (war pile) - fixed buffer for zero allocations
     war_pile: FixedWarPile,
 
-    /// Allocator (kept for compatibility, rarely used now)
-    allocator: std.mem.Allocator,
-
-    pub fn init(allocator: std.mem.Allocator, shuffled_deck: [52]Card) !GameState {
+    pub fn init(shuffled_deck: [52]Card) !GameState {
         var p1_hand = CardQueue.init();
         var p2_hand = CardQueue.init();
         const war_pile = FixedWarPile{};
@@ -92,12 +90,11 @@ pub const GameState = struct {
             .phase = .playing,
             .round = 0,
             .war_pile = war_pile,
-            .allocator = allocator,
         };
     }
 
     pub fn deinit(self: *GameState) void {
-        // All fields are now fixed-size buffers, no deallocation needed
+        // All fields are fixed-size buffers, no deallocation needed
         _ = self;
     }
 
@@ -135,10 +132,10 @@ pub const GameState = struct {
 };
 
 test "GameState initialization" {
-    const deck_module = @import("deck.zig");
-    const deck = deck_module.Deck.init();
+    const deck_lib = @import("deck.zig");
+    const deck = deck_lib.Deck.init();
 
-    var state = try GameState.init(std.testing.allocator, deck.cards);
+    var state = try GameState.init(deck.cards);
     defer state.deinit();
 
     try std.testing.expectEqual(@as(usize, 26), state.handSize(.player1));
@@ -149,10 +146,10 @@ test "GameState initialization" {
 }
 
 test "GameState hand contents" {
-    const deck_module = @import("deck.zig");
-    const deck = deck_module.Deck.init();
+    const deck_lib = @import("deck.zig");
+    const deck = deck_lib.Deck.init();
 
-    var state = try GameState.init(std.testing.allocator, deck.cards);
+    var state = try GameState.init(deck.cards);
     defer state.deinit();
 
     try std.testing.expectEqual(@as(usize, 26), state.p1_hand.size());
