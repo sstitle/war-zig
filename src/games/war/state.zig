@@ -4,6 +4,7 @@ const CardQueue = @import("../../cards/structures/card_queue.zig").CardQueue;
 const WarPile = @import("../../cards/structures/war_pile.zig").WarPile;
 const ActionHistory = @import("../../data_structures/action_history.zig").ActionHistory;
 const GameCommand = @import("commands.zig").GameCommand;
+const Config = @import("config.zig").Config;
 
 pub const Player = enum {
     player1,
@@ -43,18 +44,18 @@ pub const GameState = struct {
     /// Cards currently in play (war pile) - fixed buffer for zero allocations
     war_pile: WarPile,
 
-    /// Command history for undo/redo support (10,000 commands max)
-    history: ActionHistory(GameCommand, 10000),
+    /// Command history for undo/redo support
+    history: ActionHistory(GameCommand, Config.max_history),
 
-    pub fn init(shuffled_deck: [52]Card) !GameState {
+    pub fn init(shuffled_deck: [Config.deck_size]Card) !GameState {
         var p1_hand = CardQueue.init();
         var p2_hand = CardQueue.init();
         const war_pile = WarPile.init();
-        const history = ActionHistory(GameCommand, 10000).init();
+        const history = ActionHistory(GameCommand, Config.max_history).init();
 
-        // Deal cards: P1 gets first 26, P2 gets last 26
-        try p1_hand.pushBackSlice(shuffled_deck[0..26]);
-        try p2_hand.pushBackSlice(shuffled_deck[26..52]);
+        // Deal cards: P1 gets first half, P2 gets second half
+        try p1_hand.pushBackSlice(shuffled_deck[0..Config.cards_per_player]);
+        try p2_hand.pushBackSlice(shuffled_deck[Config.cards_per_player..Config.deck_size]);
 
         return GameState{
             .p1_hand = p1_hand,

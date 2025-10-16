@@ -30,3 +30,11 @@ pub const GameCommand = war_commands.GameCommand;
 pub const PlayCardsCommand = war_commands.PlayCardsCommand;
 pub const ResolveRoundCommand = war_commands.ResolveRoundCommand;
 pub const WarCommand = war_commands.WarCommand;
+
+// War game utilities
+pub const WarConfig = @import("games/war/config.zig").Config;
+pub const WarOrchestrator = @import("games/war/orchestrator.zig");
+pub const WarRenderer = @import("games/war/renderer.zig");
+
+// UI utilities
+pub const Terminal = @import("ui/terminal.zig");
