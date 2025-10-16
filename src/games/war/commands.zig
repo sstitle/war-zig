@@ -1,10 +1,9 @@
 const std = @import("std");
-const game_state = @import("game_state.zig");
+const game_state = @import("state.zig");
 const GameState = game_state.GameState;
 const Player = game_state.Player;
 const GamePhase = game_state.GamePhase;
-const card = @import("card.zig");
-const Card = card.Card;
+const Card = @import("../../cards/card.zig").Card;
 
 /// Tagged union of all game commands for efficient dispatch.
 /// Uses compile-time switch dispatch instead of virtual function pointers.
@@ -270,7 +269,7 @@ pub const WarCommand = struct {
 };
 
 test "PlayCardsCommand basic usage" {
-    const deck_lib = @import("deck.zig");
+    const deck_lib = @import("../../cards/deck.zig");
     const deck = deck_lib.Deck.init();
     var state = try GameState.init(deck.cards);
     defer state.deinit();

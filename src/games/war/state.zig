@@ -1,9 +1,7 @@
 const std = @import("std");
-const card_lib = @import("card.zig");
-const Card = card_lib.Card;
-const Rank = card_lib.Rank;
-const Suit = card_lib.Suit;
-const CardQueue = @import("card_queue.zig").CardQueue;
+const Card = @import("../../cards/card.zig").Card;
+const CardQueue = @import("../../data_structures/card_queue.zig").CardQueue;
+const FixedBuffer = @import("../../data_structures/fixed_buffer.zig").FixedBuffer;
 
 pub const Player = enum {
     player1,
@@ -26,35 +24,7 @@ pub const GamePhase = enum {
 
 /// Fixed-size war pile for zero-allocation card storage during rounds.
 /// Maximum size is 52 (entire deck) but typical wars use 6-12 cards.
-pub const FixedWarPile = struct {
-    buffer: [52]Card = undefined,
-    len: usize = 0,
-
-    pub fn append(self: *FixedWarPile, card: Card) !void {
-        if (self.len >= 52) return error.WarPileFull;
-        self.buffer[self.len] = card;
-        self.len += 1;
-    }
-
-    pub fn items(self: *const FixedWarPile) []const Card {
-        return self.buffer[0..self.len];
-    }
-
-    pub fn pop(self: *FixedWarPile) Card {
-        self.len -= 1;
-        return self.buffer[self.len];
-    }
-
-    pub fn clearRetainingCapacity(self: *FixedWarPile) void {
-        self.len = 0;
-    }
-
-    pub fn appendSlice(self: *FixedWarPile, cards: []const Card) !void {
-        if (self.len + cards.len > 52) return error.WarPileFull;
-        @memcpy(self.buffer[self.len..][0..cards.len], cards);
-        self.len += cards.len;
-    }
-};
+pub const WarPile = FixedBuffer(Card, 52);
 
 /// War game state using CardQueues for O(1) card operations.
 /// CardQueues provide efficient O(1) removal from front and addition to back.
@@ -73,12 +43,12 @@ pub const GameState = struct {
     round: u32,
 
     /// Cards currently in play (war pile) - fixed buffer for zero allocations
-    war_pile: FixedWarPile,
+    war_pile: WarPile,
 
     pub fn init(shuffled_deck: [52]Card) !GameState {
         var p1_hand = CardQueue.init();
         var p2_hand = CardQueue.init();
-        const war_pile = FixedWarPile{};
+        const war_pile = WarPile{};
 
         // Deal cards: P1 gets first 26, P2 gets last 26
         try p1_hand.pushBackSlice(shuffled_deck[0..26]);
@@ -132,7 +102,7 @@ pub const GameState = struct {
 };
 
 test "GameState initialization" {
-    const deck_lib = @import("deck.zig");
+    const deck_lib = @import("../../cards/deck.zig");
     const deck = deck_lib.Deck.init();
 
     var state = try GameState.init(deck.cards);
@@ -146,7 +116,7 @@ test "GameState initialization" {
 }
 
 test "GameState hand contents" {
-    const deck_lib = @import("deck.zig");
+    const deck_lib = @import("../../cards/deck.zig");
     const deck = deck_lib.Deck.init();
 
     var state = try GameState.init(deck.cards);
