@@ -4,3 +4,4 @@ scratchpad.md
 
 .zig-cache*
 .zig-out*
+.zig-out/
