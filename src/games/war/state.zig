@@ -1,7 +1,7 @@
 const std = @import("std");
 const Card = @import("../../cards/card.zig").Card;
-const CardQueue = @import("../../data_structures/card_queue.zig").CardQueue;
-const FixedBuffer = @import("../../data_structures/fixed_buffer.zig").FixedBuffer;
+const CardQueue = @import("../../cards/structures/card_queue.zig").CardQueue;
+const WarPile = @import("../../cards/structures/war_pile.zig").WarPile;
 
 pub const Player = enum {
     player1,
@@ -21,10 +21,6 @@ pub const GamePhase = enum {
     war,
     game_over,
 };
-
-/// Fixed-size war pile for zero-allocation card storage during rounds.
-/// Maximum size is 52 (entire deck) but typical wars use 6-12 cards.
-pub const WarPile = FixedBuffer(Card, 52);
 
 /// War game state using CardQueues for O(1) card operations.
 /// CardQueues provide efficient O(1) removal from front and addition to back.

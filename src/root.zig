@@ -7,13 +7,14 @@ pub const Rank = @import("cards/rank.zig").Rank;
 pub const Suit = @import("cards/suit.zig").Suit;
 pub const Deck = @import("cards/deck.zig").Deck;
 
-// Data structures - Generic, reusable data structures
+// Card-specific structures - Type aliases for card-based data structures
+pub const CardQueue = @import("cards/structures/card_queue.zig").CardQueue;
+pub const WarPile = @import("cards/structures/war_pile.zig").WarPile;
+
+// Data structures - Generic, reusable data structures (no dependencies on cards)
 pub const action_history = @import("data_structures/action_history.zig");
 pub const RingBuffer = @import("data_structures/ring_buffer.zig").RingBuffer;
 pub const FixedBuffer = @import("data_structures/fixed_buffer.zig").FixedBuffer;
-
-// Convenience type alias for Card queues
-pub const CardQueue = @import("data_structures/card_queue.zig").CardQueue;
 
 // War game - Game-specific types
 const war_state = @import("games/war/state.zig");
@@ -23,7 +24,6 @@ const war_commands = @import("games/war/commands.zig");
 pub const GameState = war_state.GameState;
 pub const Player = war_state.Player;
 pub const GamePhase = war_state.GamePhase;
-pub const WarPile = war_state.WarPile;
 
 // Re-export War game commands
 pub const GameCommand = war_commands.GameCommand;
