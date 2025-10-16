@@ -33,7 +33,7 @@ pub fn main() !void {
 
     // Play the game
     var round_num: u32 = 0;
-    const max_rounds: u32 = 50000; // Prevent infinite loops
+    const max_rounds: u32 = 100000; // Prevent infinite loops
     var war_count: u32 = 0;
 
     while (!state.isGameOver() and round_num < max_rounds) : (round_num += 1) {

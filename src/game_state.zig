@@ -24,19 +24,46 @@ pub const GamePhase = enum {
     game_over,
 };
 
+/// Fixed-size war pile for zero-allocation card storage during rounds.
+/// Maximum size is 52 (entire deck) but typical wars use 6-12 cards.
+pub const FixedWarPile = struct {
+    buffer: [52]Card = undefined,
+    len: usize = 0,
+
+    pub fn append(self: *FixedWarPile, card: Card) !void {
+        if (self.len >= 52) return error.WarPileFull;
+        self.buffer[self.len] = card;
+        self.len += 1;
+    }
+
+    pub fn items(self: *const FixedWarPile) []const Card {
+        return self.buffer[0..self.len];
+    }
+
+    pub fn pop(self: *FixedWarPile) Card {
+        self.len -= 1;
+        return self.buffer[self.len];
+    }
+
+    pub fn clearRetainingCapacity(self: *FixedWarPile) void {
+        self.len = 0;
+    }
+
+    pub fn appendSlice(self: *FixedWarPile, cards: []const Card) !void {
+        if (self.len + cards.len > 52) return error.WarPileFull;
+        @memcpy(self.buffer[self.len..][0..cards.len], cards);
+        self.len += cards.len;
+    }
+};
+
 /// War game state using CardQueues for O(1) card operations.
 /// CardQueues provide efficient O(1) removal from front and addition to back.
 pub const GameState = struct {
-    allocator: std.mem.Allocator,
-
     /// Player 1's hand (ring buffer for O(1) operations)
     p1_hand: CardQueue,
 
     /// Player 2's hand (ring buffer for O(1) operations)
     p2_hand: CardQueue,
-
-    /// Cards currently in play (war pile) - still uses ArrayList as it's accessed differently
-    war_pile: std.ArrayList(Card),
 
     /// Current game phase
     phase: GamePhase,
@@ -44,32 +71,34 @@ pub const GameState = struct {
     /// Round counter for statistics
     round: u32,
 
+    /// Cards currently in play (war pile) - fixed buffer for zero allocations
+    war_pile: FixedWarPile,
+
+    /// Allocator (kept for compatibility, rarely used now)
+    allocator: std.mem.Allocator,
+
     pub fn init(allocator: std.mem.Allocator, shuffled_deck: [52]Card) !GameState {
         var p1_hand = CardQueue.init();
         var p2_hand = CardQueue.init();
-        var war_pile: std.ArrayList(Card) = .{};
-
-        // Pre-allocate war_pile capacity for better performance
-        try war_pile.ensureTotalCapacity(allocator, 20);
+        const war_pile = FixedWarPile{};
 
         // Deal cards: P1 gets first 26, P2 gets last 26
         try p1_hand.pushBackSlice(shuffled_deck[0..26]);
         try p2_hand.pushBackSlice(shuffled_deck[26..52]);
 
         return GameState{
-            .allocator = allocator,
             .p1_hand = p1_hand,
             .p2_hand = p2_hand,
-            .war_pile = war_pile,
             .phase = .playing,
             .round = 0,
+            .war_pile = war_pile,
+            .allocator = allocator,
         };
     }
 
     pub fn deinit(self: *GameState) void {
-        // CardQueues don't need deinitialization (fixed buffers)
-        // Only war_pile needs to be freed
-        self.war_pile.deinit(self.allocator);
+        // All fields are now fixed-size buffers, no deallocation needed
+        _ = self;
     }
 
     /// Get a player's hand size
@@ -114,7 +143,7 @@ test "GameState initialization" {
 
     try std.testing.expectEqual(@as(usize, 26), state.handSize(.player1));
     try std.testing.expectEqual(@as(usize, 26), state.handSize(.player2));
-    try std.testing.expectEqual(@as(usize, 0), state.war_pile.items.len);
+    try std.testing.expectEqual(@as(usize, 0), state.war_pile.len);
     try std.testing.expectEqual(GamePhase.playing, state.phase);
     try std.testing.expect(!state.isGameOver());
 }

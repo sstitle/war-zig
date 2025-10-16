@@ -90,14 +90,17 @@ pub const CardQueue = struct {
     }
 
     /// Add multiple cards to the back of the queue.
+    /// Optimized with single bounds check instead of checking on each iteration.
     pub fn pushBackSlice(self: *CardQueue, cards: []const Card) !void {
         if (self.count + cards.len > self.buffer.len) {
             return error.FullQueue;
         }
 
         for (cards) |card| {
-            try self.pushBack(card);
+            self.buffer[self.tail] = card;
+            self.tail = (self.tail + 1) % self.buffer.len;
         }
+        self.count += cards.len;
     }
 
     /// Remove multiple cards from the front of the queue.
