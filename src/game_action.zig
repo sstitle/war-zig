@@ -12,13 +12,13 @@ pub const PlayCardsCommand = struct {
     p2_card: Card = undefined,
 
     pub fn do(self: *PlayCardsCommand, state: *GameState) !void {
-        if (state.p1_hand.items.len == 0 or state.p2_hand.items.len == 0) {
+        if (state.p1_hand.isEmpty() or state.p2_hand.isEmpty()) {
             return error.InsufficientCards;
         }
 
-        // Remove cards from front of each hand and add to war pile
-        self.p1_card = state.p1_hand.orderedRemove(0);
-        self.p2_card = state.p2_hand.orderedRemove(0);
+        // Remove cards from front of each hand (O(1) operation with CardQueue)
+        self.p1_card = try state.p1_hand.popFront();
+        self.p2_card = try state.p2_hand.popFront();
 
         try state.war_pile.append(state.allocator, self.p1_card);
         try state.war_pile.append(state.allocator, self.p2_card);
@@ -29,15 +29,15 @@ pub const PlayCardsCommand = struct {
         _ = state.war_pile.pop();
         _ = state.war_pile.pop();
 
-        // Return to front of hands
-        try state.p1_hand.insert(state.allocator, 0, self.p1_card);
-        try state.p2_hand.insert(state.allocator, 0, self.p2_card);
+        // Return to front of hands (O(1) operation with CardQueue)
+        try state.p1_hand.pushFront(self.p1_card);
+        try state.p2_hand.pushFront(self.p2_card);
     }
 
     pub fn redo(self: *PlayCardsCommand, state: *GameState) !void {
-        // Same as do, but we already have the cards captured
-        _ = state.p1_hand.orderedRemove(0);
-        _ = state.p2_hand.orderedRemove(0);
+        // Same as do, but we already have the cards captured (O(1) operation with CardQueue)
+        _ = try state.p1_hand.popFront();
+        _ = try state.p2_hand.popFront();
 
         try state.war_pile.append(state.allocator, self.p1_card);
         try state.war_pile.append(state.allocator, self.p2_card);
@@ -77,9 +77,9 @@ pub const ResolveRoundCommand = struct {
             return;
         }
 
-        // Award all cards in war pile to winner
+        // Award all cards in war pile to winner (O(n) but unavoidable)
         const winner_hand = state.getHand(self.winner);
-        try winner_hand.appendSlice(state.allocator, state.war_pile.items);
+        try winner_hand.pushBackSlice(state.war_pile.items);
 
         // Clear war pile
         state.war_pile.clearRetainingCapacity();
@@ -100,10 +100,10 @@ pub const ResolveRoundCommand = struct {
             return;
         }
 
-        // Remove cards from winner's hand
+        // Remove cards from winner's hand (O(1) operation with CardQueue)
         const winner_hand = state.getHand(self.winner);
         const cards_to_remove = self.war_pile_cards.items.len;
-        winner_hand.shrinkRetainingCapacity(winner_hand.items.len - cards_to_remove);
+        try winner_hand.removeFromBack(cards_to_remove);
 
         // Restore war pile
         state.war_pile.clearRetainingCapacity();
@@ -121,9 +121,9 @@ pub const ResolveRoundCommand = struct {
             return;
         }
 
-        // Award cards to winner
+        // Award cards to winner (O(n) but unavoidable)
         const winner_hand = state.getHand(self.winner);
-        try winner_hand.appendSlice(state.allocator, self.war_pile_cards.items);
+        try winner_hand.pushBackSlice(self.war_pile_cards.items);
 
         state.war_pile.clearRetainingCapacity();
 
@@ -157,8 +157,8 @@ pub const WarCommand = struct {
         self.prev_phase = state.phase;
 
         // Determine how many cards each player can contribute
-        const p1_count = @min(self.cards_per_player, state.p1_hand.items.len);
-        const p2_count = @min(self.cards_per_player, state.p2_hand.items.len);
+        const p1_count = @min(self.cards_per_player, state.p1_hand.size());
+        const p2_count = @min(self.cards_per_player, state.p2_hand.size());
 
         if (p1_count == 0 or p2_count == 0) {
             // Player ran out of cards during war - they lose
@@ -166,17 +166,17 @@ pub const WarCommand = struct {
             return;
         }
 
-        // Remove cards from each player and add to war pile
+        // Remove cards from each player and add to war pile (O(1) per card with CardQueue)
         var i: usize = 0;
         while (i < p1_count) : (i += 1) {
-            const card = state.p1_hand.orderedRemove(0);
+            const card = try state.p1_hand.popFront();
             try self.p1_cards.append(state.allocator, card);
             try state.war_pile.append(state.allocator, card);
         }
 
         i = 0;
         while (i < p2_count) : (i += 1) {
-            const card = state.p2_hand.orderedRemove(0);
+            const card = try state.p2_hand.popFront();
             try self.p2_cards.append(state.allocator, card);
             try state.war_pile.append(state.allocator, card);
         }
@@ -196,35 +196,35 @@ pub const WarCommand = struct {
             _ = state.war_pile.pop();
         }
 
-        // Return cards to front of hands (in reverse order)
+        // Return cards to front of hands (O(1) per card with CardQueue, in reverse order)
         i = self.p2_cards.items.len;
         while (i > 0) {
             i -= 1;
-            try state.p2_hand.insert(state.allocator, 0, self.p2_cards.items[i]);
+            try state.p2_hand.pushFront(self.p2_cards.items[i]);
         }
 
         i = self.p1_cards.items.len;
         while (i > 0) {
             i -= 1;
-            try state.p1_hand.insert(state.allocator, 0, self.p1_cards.items[i]);
+            try state.p1_hand.pushFront(self.p1_cards.items[i]);
         }
 
         state.phase = self.prev_phase;
     }
 
     pub fn redo(self: *WarCommand, state: *GameState) !void {
-        // Remove from hands and add to war pile
+        // Remove from hands and add to war pile (O(1) per card with CardQueue)
         for (self.p1_cards.items) |_| {
-            _ = state.p1_hand.orderedRemove(0);
+            _ = try state.p1_hand.popFront();
         }
         for (self.p2_cards.items) |_| {
-            _ = state.p2_hand.orderedRemove(0);
+            _ = try state.p2_hand.popFront();
         }
 
         try state.war_pile.appendSlice(state.allocator, self.p1_cards.items);
         try state.war_pile.appendSlice(state.allocator, self.p2_cards.items);
 
-        if (state.p1_hand.items.len == 0 or state.p2_hand.items.len == 0) {
+        if (state.p1_hand.isEmpty() or state.p2_hand.isEmpty()) {
             state.phase = .game_over;
         } else {
             state.phase = .playing;
