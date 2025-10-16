@@ -87,8 +87,8 @@ test "All suits defined" {
 
 test "All ranks defined" {
     const ranks = [_]Rank{
-        .two, .three, .four, .five, .six, .seven, .eight,
-        .nine, .ten, .jack, .queen, .king, .ace,
+        .two,  .three, .four, .five,  .six,  .seven, .eight,
+        .nine, .ten,   .jack, .queen, .king, .ace,
     };
     try std.testing.expectEqual(@as(usize, 13), ranks.len);
 }
