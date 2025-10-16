@@ -115,6 +115,44 @@ pub fn build(b: *std.Build) void {
         run_cmd.addArgs(args);
     }
 
+    // Example: Shuffle deck demo
+    const shuffle_exe = b.addExecutable(.{
+        .name = "shuffle",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("examples/shuffle.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "war_zig", .module = mod },
+            },
+        }),
+    });
+    b.installArtifact(shuffle_exe);
+
+    const shuffle_step = b.step("shuffle", "Run the shuffle deck example");
+    const shuffle_cmd = b.addRunArtifact(shuffle_exe);
+    shuffle_step.dependOn(&shuffle_cmd.step);
+    shuffle_cmd.step.dependOn(b.getInstallStep());
+
+    // Example: War game demo
+    const war_exe = b.addExecutable(.{
+        .name = "war",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("examples/war.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "war_zig", .module = mod },
+            },
+        }),
+    });
+    b.installArtifact(war_exe);
+
+    const war_step = b.step("war", "Run the War game example");
+    const war_cmd = b.addRunArtifact(war_exe);
+    war_step.dependOn(&war_cmd.step);
+    war_cmd.step.dependOn(b.getInstallStep());
+
     // Creates an executable that will run `test` blocks from the provided module.
     // Here `mod` needs to define a target, which is why earlier we made sure to
     // set the releative field.

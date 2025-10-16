@@ -1,15 +1,29 @@
 //! By convention, root.zig is the root source file when making a library.
 const std = @import("std");
 
-// Re-export modules
-pub const card = @import("card.zig");
-pub const deck = @import("deck.zig");
+// Internal imports
+const card_module = @import("card.zig");
+const deck_module = @import("deck.zig");
 
 // Re-export common types for convenience
-pub const Card = card.Card;
-pub const Rank = card.Rank;
-pub const Suit = card.Suit;
-pub const Deck = deck.Deck;
+pub const Card = card_module.Card;
+pub const Rank = card_module.Rank;
+pub const Suit = card_module.Suit;
+pub const Deck = deck_module.Deck;
+
+// Re-export game modules
+pub const game_state = @import("game_state.zig");
+pub const game_action = @import("game_action.zig");
+pub const command = @import("command.zig");
+pub const action_history = @import("action_history.zig");
+
+// Re-export game types for convenience
+pub const GameState = game_state.GameState;
+pub const Player = game_state.Player;
+pub const GamePhase = game_state.GamePhase;
+pub const PlayCardsCommand = game_action.PlayCardsCommand;
+pub const ResolveRoundCommand = game_action.ResolveRoundCommand;
+pub const WarCommand = game_action.WarCommand;
 
 pub fn bufferedPrint() !void {
     // Stdout is for the actual output of your application, for example if you
