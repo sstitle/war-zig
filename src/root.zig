@@ -35,6 +35,7 @@ pub const WarCommand = war_commands.WarCommand;
 pub const WarConfig = @import("games/war/config.zig").Config;
 pub const WarOrchestrator = @import("games/war/orchestrator.zig");
 pub const WarRenderer = @import("games/war/renderer.zig");
+pub const GameError = @import("games/war/errors.zig").GameError;
 
 // UI utilities
 pub const Terminal = @import("ui/terminal.zig");

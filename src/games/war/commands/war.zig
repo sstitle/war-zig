@@ -40,8 +40,11 @@ pub const WarCommand = struct {
     }
 
     pub fn undo(self: *WarCommand, state: *GameState) GameError!void {
-        // Remove cards from war pile using bulk operation
+        // Invariant: war pile must have at least the cards we added
         const total_to_pop = self.p1_count + self.p2_count;
+        std.debug.assert(state.war_pile.len >= total_to_pop);
+
+        // Remove cards from war pile using bulk operation
         try state.war_pile.popMultiple(total_to_pop);
 
         // Return cards to front of hands (O(1) per card with CardQueue, in reverse order)

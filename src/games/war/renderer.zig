@@ -38,12 +38,8 @@ pub fn printCommandDetails(cmd: *const GameCommand) void {
             if (resolve.was_war) {
                 std.debug.print("  Resolve: Cards matched - WAR!\n", .{});
             } else {
-                const winner_name = switch (resolve.winner) {
-                    .player1 => "P1",
-                    .player2 => "P2",
-                };
                 std.debug.print("  Resolve: {s} won {d} cards\n", .{
-                    winner_name,
+                    resolve.winner.shortName(),
                     resolve.war_pile_snapshot.len,
                 });
             }
@@ -62,11 +58,7 @@ pub fn printGameOver(state: *const GameState) !void {
     std.debug.print("Total rounds: {d}\n", .{state.round});
 
     if (state.winner()) |winner| {
-        const winner_name = switch (winner) {
-            .player1 => "Player 1",
-            .player2 => "Player 2",
-        };
-        std.debug.print("Winner: {s}\n", .{winner_name});
+        std.debug.print("Winner: {s}\n", .{winner.longName()});
         std.debug.print("Final card count - P1: {d}, P2: {d}\n", .{
             state.handSize(.player1),
             state.handSize(.player2),

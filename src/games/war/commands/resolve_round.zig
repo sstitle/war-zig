@@ -62,8 +62,11 @@ pub const ResolveRoundCommand = struct {
             return;
         }
 
-        // Remove cards from winner's hand (O(1) operation with CardQueue)
+        // Invariant: winner must have at least the cards we gave them
         const winner_hand = state.getHand(self.winner);
+        std.debug.assert(winner_hand.size() >= self.war_pile_snapshot.len);
+
+        // Remove cards from winner's hand (O(1) operation with CardQueue)
         try winner_hand.removeFromBack(self.war_pile_snapshot.len);
 
         // Restore war pile from snapshot

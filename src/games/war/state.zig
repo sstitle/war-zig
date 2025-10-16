@@ -11,10 +11,28 @@ pub const Player = enum {
     player1,
     player2,
 
-    pub fn other(self: Player) Player {
+    /// Returns the opposite player.
+    /// Uses explicit switch for clarity; compiler optimizes to xor operation.
+    pub inline fn other(self: Player) Player {
         return switch (self) {
             .player1 => .player2,
             .player2 => .player1,
+        };
+    }
+
+    /// Returns short display name (e.g., "P1", "P2")
+    pub inline fn shortName(self: Player) []const u8 {
+        return switch (self) {
+            .player1 => "P1",
+            .player2 => "P2",
+        };
+    }
+
+    /// Returns full display name (e.g., "Player 1", "Player 2")
+    pub inline fn longName(self: Player) []const u8 {
+        return switch (self) {
+            .player1 => "Player 1",
+            .player2 => "Player 2",
         };
     }
 };
@@ -70,11 +88,6 @@ pub const GameState = struct {
         };
     }
 
-    pub fn deinit(self: *GameState) void {
-        // All fields are fixed-size buffers, no deallocation needed
-        _ = self;
-    }
-
     /// Get a player's hand size
     pub inline fn handSize(self: *const GameState, player: Player) usize {
         return switch (player) {
@@ -113,7 +126,6 @@ test "GameState initialization" {
     const deck = deck_lib.Deck.init();
 
     var state = try GameState.init(deck.cards);
-    defer state.deinit();
 
     try std.testing.expectEqual(@as(usize, 26), state.handSize(.player1));
     try std.testing.expectEqual(@as(usize, 26), state.handSize(.player2));
@@ -127,7 +139,6 @@ test "GameState hand contents" {
     const deck = deck_lib.Deck.init();
 
     var state = try GameState.init(deck.cards);
-    defer state.deinit();
 
     try std.testing.expectEqual(@as(usize, 26), state.p1_hand.size());
     try std.testing.expectEqual(@as(usize, 26), state.p2_hand.size());

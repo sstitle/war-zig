@@ -10,6 +10,9 @@ const Orchestrator = war_zig.WarOrchestrator;
 const Renderer = war_zig.WarRenderer;
 const Terminal = war_zig.Terminal;
 
+/// Default seed when getrandom fails (uses timestamp for non-determinism)
+const use_timestamp_fallback = true;
+
 const AppConfig = struct {
     step_mode: bool = false,
 };
@@ -57,7 +60,6 @@ fn stepMode(state: *GameState) !void {
             ' ' => {
                 // Advance game
                 var turn_result = try Orchestrator.executeTurn(state);
-                defer turn_result.deinit();
 
                 std.debug.print("▸ ", .{});
                 Renderer.printCommandDetails(&turn_result.round_result.play_cmd);
@@ -127,7 +129,6 @@ fn autoMode(state: *GameState) !void {
             std.debug.print("Fatal error during turn: {s}\n", .{@errorName(err)});
             return err;
         };
-        defer turn_result.deinit();
 
         // Print the round
         const play_cmd = &turn_result.round_result.play_cmd;
@@ -212,7 +213,14 @@ pub fn main() !void {
     // Create and shuffle a deck
     var prng = std.Random.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
-        std.posix.getrandom(std.mem.asBytes(&seed)) catch break :blk 42;
+        std.posix.getrandom(std.mem.asBytes(&seed)) catch {
+            // Fall back to timestamp-based seed if getrandom fails
+            seed = if (use_timestamp_fallback)
+                @intCast(std.time.milliTimestamp())
+            else
+                0; // Deterministic fallback for testing
+            break :blk seed;
+        };
         break :blk seed;
     });
     const random = prng.random();
@@ -222,7 +230,6 @@ pub fn main() !void {
 
     // Initialize game state
     var state = try GameState.init(deck.cards);
-    defer state.deinit();
 
     if (config.step_mode) {
         try stepMode(&state);

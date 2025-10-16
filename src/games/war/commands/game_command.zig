@@ -61,7 +61,6 @@ test "PlayCardsCommand basic usage" {
     const deck_lib = @import("../../../cards/deck.zig");
     const deck = deck_lib.Deck.init();
     var state = try GameState.init(deck.cards);
-    defer state.deinit();
 
     var cmd = PlayCardsCommand{};
 

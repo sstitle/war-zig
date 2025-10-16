@@ -112,9 +112,4 @@ pub const WarResult = struct {
 pub const TurnResult = struct {
     round_result: RoundResult,
     war_result: ?WarResult,
-
-    pub fn deinit(self: *TurnResult) void {
-        // No cleanup needed - using fixed-size buffers
-        _ = self;
-    }
 };

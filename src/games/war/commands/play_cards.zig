@@ -24,6 +24,9 @@ pub const PlayCardsCommand = struct {
     }
 
     pub fn undo(self: *PlayCardsCommand, state: *GameState) GameError!void {
+        // Invariant: war pile must have at least the cards we added
+        std.debug.assert(state.war_pile.len >= Config.cards_per_regular_round);
+
         // Remove from war pile (last cards played) - single operation
         try state.war_pile.popMultiple(Config.cards_per_regular_round);
 
