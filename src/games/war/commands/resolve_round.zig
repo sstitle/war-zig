@@ -4,12 +4,12 @@ const GameState = game_state.GameState;
 const Player = game_state.Player;
 const GamePhase = game_state.GamePhase;
 const Card = @import("../../../cards/card.zig").Card;
+const WarPile = @import("../../../cards/structures/war_pile.zig").WarPile;
 
 /// ResolveRoundCommand - Compare cards in war pile and award to winner
 pub const ResolveRoundCommand = struct {
     winner: Player = undefined,
-    war_pile_snapshot: [52]Card = undefined,
-    war_pile_len: usize = 0,
+    war_pile_snapshot: WarPile = WarPile.init(),
     prev_phase: GamePhase = undefined,
     prev_round: u32 = undefined,
     was_war: bool = false,
@@ -22,10 +22,9 @@ pub const ResolveRoundCommand = struct {
         // Capture state for undo
         self.prev_phase = state.phase;
         self.prev_round = state.round;
-        self.war_pile_len = state.war_pile.len;
 
         // Copy war pile to enable undo
-        @memcpy(self.war_pile_snapshot[0..self.war_pile_len], state.war_pile.items());
+        self.war_pile_snapshot = state.war_pile;
 
         // Get the last two cards played (P1's card is second-to-last, P2's is last)
         const pile_items = state.war_pile.items();
@@ -63,11 +62,10 @@ pub const ResolveRoundCommand = struct {
 
         // Remove cards from winner's hand (O(1) operation with CardQueue)
         const winner_hand = state.getHand(self.winner);
-        try winner_hand.removeFromBack(self.war_pile_len);
+        try winner_hand.removeFromBack(self.war_pile_snapshot.len);
 
         // Restore war pile from snapshot
-        state.war_pile.clearRetainingCapacity();
-        try state.war_pile.appendSlice(self.war_pile_snapshot[0..self.war_pile_len]);
+        state.war_pile = self.war_pile_snapshot;
 
         state.phase = self.prev_phase;
         state.round = self.prev_round;
@@ -88,7 +86,7 @@ pub const ResolveRoundCommand = struct {
     inline fn applyWinner(self: *const ResolveRoundCommand, state: *GameState) !void {
         // Award cards to winner from snapshot (O(n) but unavoidable)
         const winner_hand = state.getHand(self.winner);
-        try winner_hand.pushBackSlice(self.war_pile_snapshot[0..self.war_pile_len]);
+        try winner_hand.pushBackSlice(self.war_pile_snapshot.items());
 
         state.war_pile.clearRetainingCapacity();
 

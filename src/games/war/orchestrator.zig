@@ -9,8 +9,14 @@ const GameCommand = @import("commands.zig").GameCommand;
 const PlayCardsCommand = @import("commands.zig").PlayCardsCommand;
 const ResolveRoundCommand = @import("commands.zig").ResolveRoundCommand;
 const WarCommand = @import("commands.zig").WarCommand;
+const Config = @import("config.zig").Config;
 
-const MAX_WARS_PER_TURN = 20; // Reasonable upper bound for wars in a single turn
+// Calculate actual maximum wars per turn based on game rules
+// Each war requires 4 cards per player (3 face-down + 1 face-up)
+// With 26 cards per player: 26 ÷ 4 = 6 max consecutive wars (plus remainder)
+const cards_per_war = 4;
+const max_wars_per_turn = (Config.cards_per_player / cards_per_war) + 1;
+const max_commands_per_turn = max_wars_per_turn * 3; // war + play + resolve per war
 
 /// Execute a single round: play cards and resolve
 pub fn executeRound(state: *GameState) !RoundResult {
@@ -40,7 +46,7 @@ pub fn handleWarPhase(state: *GameState) !WarResult {
         .commands_count = 0,
     };
 
-    while (state.phase == .war and !state.isGameOver() and result.war_count < MAX_WARS_PER_TURN) {
+    while (state.phase == .war and !state.isGameOver()) {
         result.war_count += 1;
 
         // Execute war command
@@ -94,7 +100,7 @@ pub const RoundResult = struct {
 /// Result of handling a complete war phase
 pub const WarResult = struct {
     war_count: u32,
-    commands: [MAX_WARS_PER_TURN * 3]GameCommand = undefined, // 3 commands per war
+    commands: [max_commands_per_turn]GameCommand = undefined,
     commands_count: usize,
 
     pub fn getCommands(self: *const WarResult) []const GameCommand {

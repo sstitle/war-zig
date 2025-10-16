@@ -44,7 +44,7 @@ pub fn printCommandDetails(cmd: *const GameCommand) void {
                 };
                 std.debug.print("  Resolve: {s} won {d} cards\n", .{
                     winner_name,
-                    resolve.war_pile_len,
+                    resolve.war_pile_snapshot.len,
                 });
             }
         },
