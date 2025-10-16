@@ -11,6 +11,7 @@ const WarCommand = war_zig.WarCommand;
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
 
     // Create and shuffle a deck
     var prng = std.Random.DefaultPrng.init(blk: {
@@ -24,14 +25,16 @@ pub fn main() !void {
     deck.shuffle(random);
 
     // Initialize game state
-    var state = GameState.init(deck.cards);
+    var state = try GameState.init(allocator, deck.cards);
+    defer state.deinit();
 
     std.debug.print("=== War Game ===\n", .{});
     std.debug.print("Starting with 26 cards each\n\n", .{});
 
     // Play the game
     var round_num: u32 = 0;
-    const max_rounds: u32 = 10000; // Prevent infinite loops
+    const max_rounds: u32 = 50000; // Prevent infinite loops
+    var war_count: u32 = 0;
 
     while (!state.isGameOver() and round_num < max_rounds) : (round_num += 1) {
         // Play cards
@@ -41,18 +44,45 @@ pub fn main() !void {
             break;
         };
 
+        // Print the cards played
+        std.debug.print("Round {d}: P1 plays {f}, P2 plays {f}", .{
+            round_num + 1,
+            play_cmd.p1_card,
+            play_cmd.p2_card,
+        });
+
         // Resolve the round
         var resolve_cmd = ResolveRoundCommand{};
+        defer resolve_cmd.deinit(allocator);
+
         resolve_cmd.do(&state) catch |err| {
             std.debug.print("Error resolving round: {}\n", .{err});
             break;
         };
 
-        // If we're in a war state, handle it
+        // Print the result
         if (state.phase == .war) {
-            std.debug.print("Round {d}: WAR!\n", .{round_num + 1});
+            std.debug.print(" -> TIE! WAR!\n", .{});
+        } else {
+            const winner_name = switch (resolve_cmd.winner) {
+                .player1 => "P1",
+                .player2 => "P2",
+            };
+            std.debug.print(" -> {s} wins (P1: {d} cards, P2: {d} cards)\n", .{
+                winner_name,
+                state.handSize(.player1),
+                state.handSize(.player2),
+            });
+        }
+
+        // If we're in a war state, handle it
+        while (state.phase == .war) {
+            war_count += 1;
+            std.debug.print("  WAR #{d}: Each player puts down cards...\n", .{war_count});
 
             var war_cmd = WarCommand{};
+            defer war_cmd.deinit(allocator);
+
             war_cmd.do(&state) catch |err| {
                 std.debug.print("Error during war: {}\n", .{err});
                 state.phase = .game_over;
@@ -66,26 +96,40 @@ pub fn main() !void {
                 break;
             };
 
-            resolve_cmd = ResolveRoundCommand{};
-            resolve_cmd.do(&state) catch |err| {
+            std.debug.print("  War resolution: P1 plays {f}, P2 plays {f}", .{
+                play_cmd.p1_card,
+                play_cmd.p2_card,
+            });
+
+            var resolve_cmd2 = ResolveRoundCommand{};
+            defer resolve_cmd2.deinit(allocator);
+
+            resolve_cmd2.do(&state) catch |err| {
                 std.debug.print("Error resolving after war: {}\n", .{err});
                 break;
             };
-        }
 
-        // Print status every 1000 rounds
-        if (round_num % 1000 == 0) {
-            std.debug.print("Round {d}: P1={d} cards, P2={d} cards\n", .{
-                round_num + 1,
-                state.handSize(.player1),
-                state.handSize(.player2),
-            });
+            if (state.phase == .war) {
+                std.debug.print(" -> ANOTHER TIE!\n", .{});
+                // Loop continues to handle the next war
+            } else {
+                const winner_name = switch (resolve_cmd2.winner) {
+                    .player1 => "P1",
+                    .player2 => "P2",
+                };
+                std.debug.print(" -> {s} wins the war! (P1: {d} cards, P2: {d} cards)\n", .{
+                    winner_name,
+                    state.handSize(.player1),
+                    state.handSize(.player2),
+                });
+            }
         }
     }
 
     // Print final results
     std.debug.print("\n=== Game Over ===\n", .{});
     std.debug.print("Total rounds: {d}\n", .{state.round});
+    std.debug.print("Total wars: {d}\n", .{war_count});
 
     if (state.winner()) |winner| {
         const winner_name = switch (winner) {
