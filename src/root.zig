@@ -21,6 +21,9 @@ pub const action_history = @import("action_history.zig");
 pub const GameState = game_state.GameState;
 pub const Player = game_state.Player;
 pub const GamePhase = game_state.GamePhase;
+
+// Re-export command types
+pub const GameCommand = game_action.GameCommand;
 pub const PlayCardsCommand = game_action.PlayCardsCommand;
 pub const ResolveRoundCommand = game_action.ResolveRoundCommand;
 pub const WarCommand = game_action.WarCommand;

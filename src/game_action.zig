@@ -5,6 +5,32 @@ const Player = game_state.Player;
 const GamePhase = game_state.GamePhase;
 const Card = @import("card.zig").Card;
 
+/// Tagged union of all game commands for efficient dispatch.
+/// Uses compile-time switch dispatch instead of virtual function pointers.
+pub const GameCommand = union(enum) {
+    play_cards: PlayCardsCommand,
+    resolve_round: ResolveRoundCommand,
+    war: WarCommand,
+
+    pub fn do(self: *GameCommand, state: *GameState) !void {
+        return switch (self.*) {
+            inline else => |*cmd| cmd.do(state),
+        };
+    }
+
+    pub fn undo(self: *GameCommand, state: *GameState) !void {
+        return switch (self.*) {
+            inline else => |*cmd| cmd.undo(state),
+        };
+    }
+
+    pub fn redo(self: *GameCommand, state: *GameState) !void {
+        return switch (self.*) {
+            inline else => |*cmd| cmd.redo(state),
+        };
+    }
+};
+
 /// PlayCardsCommand - Both players play one card from the top of their deck
 pub const PlayCardsCommand = struct {
     // Captured cards for undo
@@ -20,8 +46,7 @@ pub const PlayCardsCommand = struct {
         self.p1_card = try state.p1_hand.popFront();
         self.p2_card = try state.p2_hand.popFront();
 
-        try state.war_pile.append(self.p1_card);
-        try state.war_pile.append(self.p2_card);
+        try self.applyToWarPile(state);
     }
 
     pub fn undo(self: *PlayCardsCommand, state: *GameState) !void {
@@ -35,10 +60,14 @@ pub const PlayCardsCommand = struct {
     }
 
     pub fn redo(self: *PlayCardsCommand, state: *GameState) !void {
-        // Same as do, but we already have the cards captured (O(1) operation with CardQueue)
+        // Cards already captured, just remove from hands and apply to war pile
         _ = try state.p1_hand.popFront();
         _ = try state.p2_hand.popFront();
+        try self.applyToWarPile(state);
+    }
 
+    /// Shared logic for adding captured cards to war pile
+    inline fn applyToWarPile(self: *const PlayCardsCommand, state: *GameState) !void {
         try state.war_pile.append(self.p1_card);
         try state.war_pile.append(self.p2_card);
     }
@@ -87,19 +116,7 @@ pub const ResolveRoundCommand = struct {
             return;
         }
 
-        // Award all cards in war pile to winner (O(n) but unavoidable)
-        const winner_hand = state.getHand(self.winner);
-        try winner_hand.pushBackSlice(state.war_pile.items());
-
-        // Clear war pile
-        state.war_pile.clearRetainingCapacity();
-
-        // Check for game over
-        if (state.isGameOver()) {
-            state.phase = .game_over;
-        }
-
-        state.round += 1;
+        try self.applyWinner(state);
     }
 
     pub fn undo(self: *ResolveRoundCommand, state: *GameState) !void {
@@ -130,6 +147,11 @@ pub const ResolveRoundCommand = struct {
             return;
         }
 
+        try self.applyWinner(state);
+    }
+
+    /// Shared logic for awarding cards to winner
+    inline fn applyWinner(self: *const ResolveRoundCommand, state: *GameState) !void {
         // Award cards to winner from snapshot (O(n) but unavoidable)
         const winner_hand = state.getHand(self.winner);
         try winner_hand.pushBackSlice(self.war_pile_snapshot[0..self.war_pile_len]);
@@ -141,12 +163,6 @@ pub const ResolveRoundCommand = struct {
         }
 
         state.round = self.prev_round + 1;
-    }
-
-    pub fn deinit(self: *ResolveRoundCommand, allocator: std.mem.Allocator) void {
-        // No allocations to clean up anymore
-        _ = self;
-        _ = allocator;
     }
 };
 
@@ -175,20 +191,9 @@ pub const WarCommand = struct {
             return;
         }
 
-        // Remove cards from each player and add to war pile (O(1) per card with CardQueue)
-        var i: usize = 0;
-        while (i < self.p1_count) : (i += 1) {
-            const card = try state.p1_hand.popFront();
-            self.p1_cards[i] = card;
-            try state.war_pile.append(card);
-        }
-
-        i = 0;
-        while (i < self.p2_count) : (i += 1) {
-            const card = try state.p2_hand.popFront();
-            self.p2_cards[i] = card;
-            try state.war_pile.append(card);
-        }
+        // Remove cards from each player and add to war pile
+        try self.captureAndRemoveCards(state);
+        try self.applyToWarPile(state);
 
         // Return to playing phase to resolve the war
         state.phase = .playing;
@@ -222,7 +227,7 @@ pub const WarCommand = struct {
     }
 
     pub fn redo(self: *WarCommand, state: *GameState) !void {
-        // Remove from hands and add to war pile (O(1) per card with CardQueue)
+        // Remove from hands (cards already captured)
         var i: usize = 0;
         while (i < self.p1_count) : (i += 1) {
             _ = try state.p1_hand.popFront();
@@ -232,8 +237,7 @@ pub const WarCommand = struct {
             _ = try state.p2_hand.popFront();
         }
 
-        try state.war_pile.appendSlice(self.p1_cards[0..self.p1_count]);
-        try state.war_pile.appendSlice(self.p2_cards[0..self.p2_count]);
+        try self.applyToWarPile(state);
 
         if (state.p1_hand.isEmpty() or state.p2_hand.isEmpty()) {
             state.phase = .game_over;
@@ -242,10 +246,22 @@ pub const WarCommand = struct {
         }
     }
 
-    pub fn deinit(self: *WarCommand, allocator: std.mem.Allocator) void {
-        // No allocations to clean up anymore
-        _ = self;
-        _ = allocator;
+    /// Capture cards from hands during initial do()
+    inline fn captureAndRemoveCards(self: *WarCommand, state: *GameState) !void {
+        var i: usize = 0;
+        while (i < self.p1_count) : (i += 1) {
+            self.p1_cards[i] = try state.p1_hand.popFront();
+        }
+        i = 0;
+        while (i < self.p2_count) : (i += 1) {
+            self.p2_cards[i] = try state.p2_hand.popFront();
+        }
+    }
+
+    /// Shared logic for adding captured cards to war pile
+    inline fn applyToWarPile(self: *const WarCommand, state: *GameState) !void {
+        try state.war_pile.appendSlice(self.p1_cards[0..self.p1_count]);
+        try state.war_pile.appendSlice(self.p2_cards[0..self.p2_count]);
     }
 };
 

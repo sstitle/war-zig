@@ -53,7 +53,6 @@ pub fn main() !void {
 
         // Resolve the round
         var resolve_cmd = ResolveRoundCommand{};
-        defer resolve_cmd.deinit(allocator);
 
         resolve_cmd.do(&state) catch |err| {
             std.debug.print("Error resolving round: {}\n", .{err});
@@ -81,7 +80,6 @@ pub fn main() !void {
             std.debug.print("  WAR #{d}: Each player puts down cards...\n", .{war_count});
 
             var war_cmd = WarCommand{};
-            defer war_cmd.deinit(allocator);
 
             war_cmd.do(&state) catch |err| {
                 std.debug.print("Error during war: {}\n", .{err});
@@ -102,7 +100,6 @@ pub fn main() !void {
             });
 
             var resolve_cmd2 = ResolveRoundCommand{};
-            defer resolve_cmd2.deinit(allocator);
 
             resolve_cmd2.do(&state) catch |err| {
                 std.debug.print("Error resolving after war: {}\n", .{err});
