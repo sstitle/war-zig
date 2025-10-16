@@ -2,6 +2,7 @@ const std = @import("std");
 const game_state = @import("../state.zig");
 const GameState = game_state.GameState;
 const Card = @import("../../../cards/card.zig").Card;
+const Config = @import("../config.zig").Config;
 
 /// PlayCardsCommand - Both players play one card from the top of their deck
 pub const PlayCardsCommand = struct {
@@ -22,8 +23,8 @@ pub const PlayCardsCommand = struct {
     }
 
     pub fn undo(self: *PlayCardsCommand, state: *GameState) !void {
-        // Remove from war pile (last two cards) - single operation
-        try state.war_pile.popMultiple(2);
+        // Remove from war pile (last cards played) - single operation
+        try state.war_pile.popMultiple(Config.cards_per_regular_round);
 
         // Return to front of hands (O(1) operation with CardQueue)
         try state.p1_hand.pushFront(self.p1_card);

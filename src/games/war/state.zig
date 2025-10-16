@@ -38,7 +38,9 @@ pub const GameState = struct {
     /// Current game phase
     phase: GamePhase,
 
-    /// Round counter for statistics
+    /// Round counter for statistics.
+    /// Note: Incremented only when a round is resolved, not during war setup.
+    /// A "war" scenario still counts as part of the same round until resolution.
     round: u32,
 
     /// Cards currently in play (war pile) - fixed buffer for zero allocations

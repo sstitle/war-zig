@@ -60,6 +60,12 @@ pub const WarCommand = struct {
     }
 
     pub fn redo(self: *WarCommand, state: *GameState) !void {
+        // Handle early game-over case (player had no cards during initial do())
+        if (self.p1_count == 0 or self.p2_count == 0) {
+            state.phase = .game_over;
+            return;
+        }
+
         // Remove from hands (cards already captured)
         var i: usize = 0;
         while (i < self.p1_count) : (i += 1) {
@@ -71,12 +77,7 @@ pub const WarCommand = struct {
         }
 
         try self.applyToWarPile(state);
-
-        if (state.p1_hand.isEmpty() or state.p2_hand.isEmpty()) {
-            state.phase = .game_over;
-        } else {
-            state.phase = .playing;
-        }
+        state.phase = .playing;
     }
 
     /// Capture cards from hands during initial do()
