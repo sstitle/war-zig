@@ -12,7 +12,7 @@ pub const CardQueue = @import("cards/structures/card_queue.zig").CardQueue;
 pub const WarPile = @import("cards/structures/war_pile.zig").WarPile;
 
 // Data structures - Generic, reusable data structures (no dependencies on cards)
-pub const action_history = @import("data_structures/action_history.zig");
+pub const ActionHistory = @import("data_structures/action_history.zig").ActionHistory;
 pub const RingBuffer = @import("data_structures/ring_buffer.zig").RingBuffer;
 pub const FixedBuffer = @import("data_structures/fixed_buffer.zig").FixedBuffer;
 

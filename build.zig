@@ -1,5 +1,32 @@
 const std = @import("std");
 
+/// Helper function to create and configure an example executable with the war_zig module
+fn addExample(
+    b: *std.Build,
+    mod: *std.Build.Module,
+    name: []const u8,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+) void {
+    const exe = b.addExecutable(.{
+        .name = name,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path(b.fmt("examples/{s}.zig", .{name})),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "war_zig", .module = mod },
+            },
+        }),
+    });
+    b.installArtifact(exe);
+
+    const run_step = b.step(name, b.fmt("Run the {s} example", .{name}));
+    const run_cmd = b.addRunArtifact(exe);
+    run_step.dependOn(&run_cmd.step);
+    run_cmd.step.dependOn(b.getInstallStep());
+}
+
 // Although this function looks imperative, it does not perform the build
 // directly and instead it mutates the build graph (`b`) that will be then
 // executed by an external runner. The functions in `std.Build` implement a DSL
@@ -46,43 +73,9 @@ pub fn build(b: *std.Build) void {
     // - `zig build shuffle` - demonstrates deck shuffling
     // - `zig build war` - plays the War card game
 
-    // Example: Shuffle deck demo
-    const shuffle_exe = b.addExecutable(.{
-        .name = "shuffle",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("examples/shuffle.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "war_zig", .module = mod },
-            },
-        }),
-    });
-    b.installArtifact(shuffle_exe);
-
-    const shuffle_step = b.step("shuffle", "Run the shuffle deck example");
-    const shuffle_cmd = b.addRunArtifact(shuffle_exe);
-    shuffle_step.dependOn(&shuffle_cmd.step);
-    shuffle_cmd.step.dependOn(b.getInstallStep());
-
-    // Example: War game demo
-    const war_exe = b.addExecutable(.{
-        .name = "war",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("examples/war.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "war_zig", .module = mod },
-            },
-        }),
-    });
-    b.installArtifact(war_exe);
-
-    const war_step = b.step("war", "Run the War game example");
-    const war_cmd = b.addRunArtifact(war_exe);
-    war_step.dependOn(&war_cmd.step);
-    war_cmd.step.dependOn(b.getInstallStep());
+    // Add example executables
+    addExample(b, mod, "shuffle", target, optimize);
+    addExample(b, mod, "war", target, optimize);
 
     // Creates an executable that will run `test` blocks from the library module.
     const mod_tests = b.addTest(.{

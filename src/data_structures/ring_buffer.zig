@@ -34,35 +34,37 @@ pub fn RingBuffer(comptime T: type, comptime capacity: usize) type {
         }
 
         /// Remove and return the item at the front of the buffer.
-        /// Returns error.EmptyQueue if the buffer is empty.
+        /// Returns error.BufferEmpty if the buffer is empty.
         pub fn popFront(self: *Self) !T {
             if (self.count == 0) {
-                return error.EmptyQueue;
+                return error.BufferEmpty;
             }
 
             const item = self.buffer[self.head];
-            self.head = (self.head + 1) % self.buffer.len;
+            self.head += 1;
+            if (self.head >= capacity) self.head = 0;
             self.count -= 1;
             return item;
         }
 
         /// Add an item to the back of the buffer.
-        /// Returns error.FullQueue if the buffer is at capacity.
+        /// Returns error.BufferFull if the buffer is at capacity.
         pub fn pushBack(self: *Self, item: T) !void {
             if (self.count >= self.buffer.len) {
-                return error.FullQueue;
+                return error.BufferFull;
             }
 
             self.buffer[self.tail] = item;
-            self.tail = (self.tail + 1) % self.buffer.len;
+            self.tail += 1;
+            if (self.tail >= capacity) self.tail = 0;
             self.count += 1;
         }
 
         /// Add an item to the front of the buffer (for undo operations).
-        /// Returns error.FullQueue if the buffer is at capacity.
+        /// Returns error.BufferFull if the buffer is at capacity.
         pub fn pushFront(self: *Self, item: T) !void {
             if (self.count >= self.buffer.len) {
-                return error.FullQueue;
+                return error.BufferFull;
             }
 
             // Move head back by one (wrapping around if necessary)
@@ -72,10 +74,10 @@ pub fn RingBuffer(comptime T: type, comptime capacity: usize) type {
         }
 
         /// View the item at the front without removing it.
-        /// Returns error.EmptyQueue if the buffer is empty.
+        /// Returns error.BufferEmpty if the buffer is empty.
         pub fn peekFront(self: *const Self) !T {
             if (self.count == 0) {
-                return error.EmptyQueue;
+                return error.BufferEmpty;
             }
             return self.buffer[self.head];
         }
@@ -106,12 +108,13 @@ pub fn RingBuffer(comptime T: type, comptime capacity: usize) type {
         /// Optimized with single bounds check instead of checking on each iteration.
         pub fn pushBackSlice(self: *Self, items: []const T) !void {
             if (self.count + items.len > self.buffer.len) {
-                return error.FullQueue;
+                return error.BufferFull;
             }
 
             for (items) |item| {
                 self.buffer[self.tail] = item;
-                self.tail = (self.tail + 1) % self.buffer.len;
+                self.tail += 1;
+                if (self.tail >= capacity) self.tail = 0;
             }
             self.count += items.len;
         }
@@ -140,7 +143,8 @@ pub fn RingBuffer(comptime T: type, comptime capacity: usize) type {
                 return error.IndexOutOfBounds;
             }
 
-            const actual_index = (self.head + index) % self.buffer.len;
+            var actual_index = self.head + index;
+            if (actual_index >= capacity) actual_index -= capacity;
             return self.buffer[actual_index];
         }
 
@@ -155,7 +159,7 @@ pub fn RingBuffer(comptime T: type, comptime capacity: usize) type {
             if (self.tail >= n) {
                 self.tail -= n;
             } else {
-                self.tail = self.buffer.len - (n - self.tail);
+                self.tail = capacity - (n - self.tail);
             }
             self.count -= n;
         }

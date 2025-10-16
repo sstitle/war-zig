@@ -44,7 +44,7 @@ pub const GameState = struct {
     pub fn init(shuffled_deck: [52]Card) !GameState {
         var p1_hand = CardQueue.init();
         var p2_hand = CardQueue.init();
-        const war_pile = WarPile{};
+        const war_pile = WarPile.init();
 
         // Deal cards: P1 gets first 26, P2 gets last 26
         try p1_hand.pushBackSlice(shuffled_deck[0..26]);

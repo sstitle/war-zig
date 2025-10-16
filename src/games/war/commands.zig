@@ -5,6 +5,11 @@ const Player = game_state.Player;
 const GamePhase = game_state.GamePhase;
 const Card = @import("../../cards/card.zig").Card;
 
+/// Compile-time option to enable undo/redo support.
+/// When false, commands don't store state snapshots, improving performance.
+/// Set to false for gameplay-only use cases where undo/redo isn't needed.
+pub const enable_undo = true;
+
 /// Tagged union of all game commands for efficient dispatch.
 /// Uses compile-time switch dispatch instead of virtual function pointers.
 pub const GameCommand = union(enum) {
@@ -50,6 +55,8 @@ pub const PlayCardsCommand = struct {
     }
 
     pub fn undo(self: *PlayCardsCommand, state: *GameState) !void {
+        if (!enable_undo) return error.UndoNotSupported;
+
         // Remove from war pile (last two cards)
         _ = state.war_pile.pop();
         _ = state.war_pile.pop();
@@ -60,6 +67,8 @@ pub const PlayCardsCommand = struct {
     }
 
     pub fn redo(self: *PlayCardsCommand, state: *GameState) !void {
+        if (!enable_undo) return error.UndoNotSupported;
+
         // Cards already captured, just remove from hands and apply to war pile
         _ = try state.p1_hand.popFront();
         _ = try state.p2_hand.popFront();
@@ -75,13 +84,13 @@ pub const PlayCardsCommand = struct {
 
 /// ResolveRoundCommand - Compare cards in war pile and award to winner
 ///
-/// Note on memory copies: This command copies the war pile for undo/redo support.
-/// While this adds some overhead (~52 cards × 16 bytes = 832 bytes max), it's
-/// necessary for the command pattern. If undo/redo is not needed in your use case,
-/// this snapshot could be eliminated to improve performance.
+/// Note on memory copies: When `enable_undo` is true, this command copies the war
+/// pile for undo/redo support (~52 cards × 16 bytes = 832 bytes max). Set
+/// `enable_undo = false` at compile time to eliminate this overhead for
+/// gameplay-only use cases.
 pub const ResolveRoundCommand = struct {
     winner: Player = undefined,
-    war_pile_snapshot: [52]Card = undefined,
+    war_pile_snapshot: if (enable_undo) [52]Card else void = if (enable_undo) undefined else {},
     war_pile_len: usize = 0,
     prev_phase: GamePhase = undefined,
     prev_round: u32 = undefined,
@@ -96,8 +105,11 @@ pub const ResolveRoundCommand = struct {
         self.prev_phase = state.phase;
         self.prev_round = state.round;
         self.war_pile_len = state.war_pile.len;
-        // Copy war pile to enable undo (tradeoff: memory copy for undo capability)
-        @memcpy(self.war_pile_snapshot[0..self.war_pile_len], state.war_pile.items());
+
+        // Copy war pile to enable undo (only when undo support is enabled)
+        if (enable_undo) {
+            @memcpy(self.war_pile_snapshot[0..self.war_pile_len], state.war_pile.items());
+        }
 
         // Get the last two cards played (P1's card is second-to-last, P2's is last)
         const pile_items = state.war_pile.items();
@@ -126,6 +138,8 @@ pub const ResolveRoundCommand = struct {
     }
 
     pub fn undo(self: *ResolveRoundCommand, state: *GameState) !void {
+        if (!enable_undo) return error.UndoNotSupported;
+
         // If this was a war, just restore state
         if (self.was_war) {
             state.phase = self.prev_phase;
@@ -146,6 +160,8 @@ pub const ResolveRoundCommand = struct {
     }
 
     pub fn redo(self: *ResolveRoundCommand, state: *GameState) !void {
+        if (!enable_undo) return error.UndoNotSupported;
+
         // If this was a war, just update state
         if (self.was_war) {
             state.phase = .war;
@@ -206,15 +222,14 @@ pub const WarCommand = struct {
     }
 
     pub fn undo(self: *WarCommand, state: *GameState) !void {
-        // Remove cards from war pile (p1 and p2 cards in one optimized loop)
+        if (!enable_undo) return error.UndoNotSupported;
+
+        // Remove cards from war pile using bulk operation
         const total_to_pop = self.p1_count + self.p2_count;
-        var i = total_to_pop;
-        while (i > 0) : (i -= 1) {
-            _ = state.war_pile.pop();
-        }
+        try state.war_pile.popMultiple(total_to_pop);
 
         // Return cards to front of hands (O(1) per card with CardQueue, in reverse order)
-        i = self.p2_count;
+        var i = self.p2_count;
         while (i > 0) {
             i -= 1;
             try state.p2_hand.pushFront(self.p2_cards[i]);
@@ -230,6 +245,8 @@ pub const WarCommand = struct {
     }
 
     pub fn redo(self: *WarCommand, state: *GameState) !void {
+        if (!enable_undo) return error.UndoNotSupported;
+
         // Remove from hands (cards already captured)
         var i: usize = 0;
         while (i < self.p1_count) : (i += 1) {
