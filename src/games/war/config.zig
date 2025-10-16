@@ -16,4 +16,7 @@ pub const Config = struct {
 
     /// Cards per player at game start (half the deck)
     pub const cards_per_player: usize = deck_size / 2;
+
+    /// Cards each player puts down during a war (3 face-down + 1 face-up)
+    pub const cards_per_war_per_player: usize = 4;
 };

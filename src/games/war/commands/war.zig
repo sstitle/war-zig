@@ -3,15 +3,16 @@ const game_state = @import("../state.zig");
 const GameState = game_state.GameState;
 const GamePhase = game_state.GamePhase;
 const Card = @import("../../../cards/card.zig").Card;
+const Config = @import("../config.zig").Config;
 
 /// WarCommand - Handle the "war" scenario when cards are equal
 /// Each player puts down cards (traditionally 3 face-down + 1 face-up)
 pub const WarCommand = struct {
-    cards_per_player: usize = 4,
+    const cards_per_player = Config.cards_per_war_per_player;
 
     // Captured cards for undo (fixed buffers, max 4 cards each)
-    p1_cards: [4]Card = undefined,
-    p2_cards: [4]Card = undefined,
+    p1_cards: [cards_per_player]Card = undefined,
+    p2_cards: [cards_per_player]Card = undefined,
     p1_count: usize = 0,
     p2_count: usize = 0,
     prev_phase: GamePhase = undefined,
@@ -20,8 +21,8 @@ pub const WarCommand = struct {
         self.prev_phase = state.phase;
 
         // Determine how many cards each player can contribute
-        self.p1_count = @min(self.cards_per_player, state.p1_hand.size());
-        self.p2_count = @min(self.cards_per_player, state.p2_hand.size());
+        self.p1_count = @min(cards_per_player, state.p1_hand.size());
+        self.p2_count = @min(cards_per_player, state.p2_hand.size());
 
         if (self.p1_count == 0 or self.p2_count == 0) {
             // Player ran out of cards during war - they lose

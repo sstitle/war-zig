@@ -34,9 +34,7 @@ pub const Deck = struct {
         var i: usize = self.cards.len - 1;
         while (i > 0) : (i -= 1) {
             const j = random.intRangeLessThan(usize, 0, i + 1);
-            const temp = self.cards[i];
-            self.cards[i] = self.cards[j];
-            self.cards[j] = temp;
+            std.mem.swap(card.Card, &self.cards[i], &self.cards[j]);
         }
     }
 };

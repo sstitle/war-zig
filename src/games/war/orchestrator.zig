@@ -12,10 +12,9 @@ const WarCommand = @import("commands.zig").WarCommand;
 const Config = @import("config.zig").Config;
 
 // Calculate actual maximum wars per turn based on game rules
-// Each war requires 4 cards per player (3 face-down + 1 face-up)
+// Each war requires Config.cards_per_war_per_player cards per player
 // With 26 cards per player: 26 ÷ 4 = 6 max consecutive wars (plus remainder)
-const cards_per_war = 4;
-const max_wars_per_turn = (Config.cards_per_player / cards_per_war) + 1;
+const max_wars_per_turn = (Config.cards_per_player / Config.cards_per_war_per_player) + 1;
 const max_commands_per_turn = max_wars_per_turn * 3; // war + play + resolve per war
 
 /// Execute a single round: play cards and resolve

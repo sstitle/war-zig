@@ -22,9 +22,8 @@ pub const PlayCardsCommand = struct {
     }
 
     pub fn undo(self: *PlayCardsCommand, state: *GameState) !void {
-        // Remove from war pile (last two cards)
-        _ = try state.war_pile.pop();
-        _ = try state.war_pile.pop();
+        // Remove from war pile (last two cards) - single operation
+        try state.war_pile.popMultiple(2);
 
         // Return to front of hands (O(1) operation with CardQueue)
         try state.p1_hand.pushFront(self.p1_card);
