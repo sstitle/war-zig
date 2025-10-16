@@ -2,9 +2,23 @@ const std = @import("std");
 const war_zig = @import("war_zig");
 
 pub fn main() !void {
-    // Prints to stderr, ignoring potential errors.
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
-    try war_zig.bufferedPrint();
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+
+    var prng = std.Random.DefaultPrng.init(blk: {
+        var seed: u64 = undefined;
+        std.posix.getrandom(std.mem.asBytes(&seed)) catch break :blk 0;
+        break :blk seed;
+    });
+    const random = prng.random();
+
+    var deck = war_zig.Deck.init();
+    deck.shuffle(random);
+
+    std.debug.print("Shuffled deck:\n", .{});
+    for (deck.cards, 0..) |card, i| {
+        std.debug.print("{d:2}: {f}\n", .{ i + 1, card });
+    }
 }
 
 test "simple test" {
